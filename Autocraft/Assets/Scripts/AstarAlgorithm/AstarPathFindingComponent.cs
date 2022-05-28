@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -22,11 +23,7 @@ public class AstarPathFindingComponent : MonoBehaviour
     private Vector3Int m_goalPosition;
     private AstarNode m_currentNode;
     private Stack<Vector3Int> m_path;
-
-    void Update()
-    {
-        Algorithm();
-    }
+    private bool m_hasPath;
 
     public void Initialize(Vector3Int _start, Vector3Int _goal)
     {
@@ -46,40 +43,33 @@ public class AstarPathFindingComponent : MonoBehaviour
             m_path.Clear();
         }
         m_path = null;
-
+        m_hasPath = false;
         //Add start to the open list
         m_openList.Add(m_currentNode);
+
+        StartCoroutine("Algorithm");
     }
 
-    private void Algorithm()
+    IEnumerator Algorithm()
     {
-        if (m_currentNode != null)
+        while (m_openList.Count > 0 && m_path == null)
         {
-            while(m_openList.Count > 0 && m_path == null)
-            {
-                List<AstarNode> neighbors = FindNeighbors(m_currentNode.m_position);
-                CheckNeighbors(neighbors, m_currentNode);
-                UpdateCurrentTile(ref m_currentNode);
+            List<AstarNode> neighbors = FindNeighbors(m_currentNode.m_position);
+            CheckNeighbors(neighbors, m_currentNode);
+            UpdateCurrentTile(ref m_currentNode);
 
-                m_path = GeneratePath();
-            }
-
-            if (Defines.myInstance.EnableDebug)
-            {
-                AstarDebugger.myInstance.CreateTiles(m_openList, m_closedList, m_startPosition, m_goalPosition, m_path);
-            }
-            else
-            {
-                AstarDebugger.myInstance.Reset();
-            }
+            m_path = GeneratePath();
+            yield return null;
         }
+        m_hasPath = true;
+        AstarDebugger.myInstance.CreateTiles(m_openList, m_closedList, m_startPosition, m_goalPosition, m_path);
     }
 
     private List<AstarNode> FindNeighbors(Vector3Int _parentPosition)
     {
         List<AstarNode> neighbors = new List<AstarNode>();
 
-        for(int x = -1; x <= 1; ++x)
+        for (int x = -1; x <= 1; ++x)
         {
             for (int y = -1; y <= 1; ++y)
             {
@@ -98,11 +88,11 @@ public class AstarPathFindingComponent : MonoBehaviour
 
     private void CheckNeighbors(List<AstarNode> _neighbors, AstarNode _currentNode)
     {
-        for(int i = 0; i < _neighbors.Count; ++i)
+        for (int i = 0; i < _neighbors.Count; ++i)
         {
             AstarNode neighbor = _neighbors[i];
             int gScore = GetGScore(_neighbors[i].m_position, _currentNode.m_position);
-            
+
             if (m_openList.Contains(neighbor))
             {
                 if (m_currentNode.G + gScore < neighbor.G)
@@ -110,7 +100,7 @@ public class AstarPathFindingComponent : MonoBehaviour
                     CalculateValues(m_currentNode, neighbor, gScore);
                 }
             }
-            else if(!m_closedList.Contains(neighbor))
+            else if (!m_closedList.Contains(neighbor))
             {
                 CalculateValues(m_currentNode, neighbor, gScore);
                 m_openList.Add(neighbor);
@@ -133,7 +123,7 @@ public class AstarPathFindingComponent : MonoBehaviour
         int x = _currentNode.x - _neighbor.x;
         int y = _currentNode.y - _neighbor.y;
 
-        if(Mathf.Abs(x-y) % 2 == 1)
+        if (Mathf.Abs(x - y) % 2 == 1)
         {
             gScore = 10;
         }
@@ -151,7 +141,7 @@ public class AstarPathFindingComponent : MonoBehaviour
 
         m_closedList.Add(m_currentNode);
 
-        if(m_openList.Count > 0)
+        if (m_openList.Count > 0)
         {
             m_currentNode = m_openList.OrderBy(x => x.F).First();
         }
@@ -177,7 +167,7 @@ public class AstarPathFindingComponent : MonoBehaviour
         {
             Stack<Vector3Int> finalPath = new Stack<Vector3Int>();
 
-            while(m_currentNode.m_position != m_startPosition)
+            while (m_currentNode.m_position != m_startPosition)
             {
                 finalPath.Push(m_currentNode.m_position);
                 m_currentNode = m_currentNode.m_parent;
@@ -185,5 +175,19 @@ public class AstarPathFindingComponent : MonoBehaviour
             return finalPath;
         }
         return null;
+    }
+
+    public bool HasPath()
+    {
+        return m_hasPath;
+    }
+
+    public Stack<Vector3Int> GetPath()
+    {
+        if (HasPath())
+        {
+            return m_path;
+        }
+        return new Stack<Vector3Int>();
     }
 }

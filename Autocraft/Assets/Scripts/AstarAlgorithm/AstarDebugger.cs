@@ -29,36 +29,54 @@ public class AstarDebugger : MonoBehaviour
     [SerializeField] private Color m_startColor;
     [SerializeField] private Color m_goalColor;
 
+    private Vector3Int m_previousGoal;
+
     public void Reset()
     {
         m_tilemap.ClearAllTiles();
     }
 
+    private void Update()
+    {
+        if (!Defines.myInstance.EnableDebug)
+        {
+            Reset();
+        }
+    }
+
     public void CreateTiles(HashSet<AstarNode> _openList, HashSet<AstarNode> _closedList, Vector3Int _start, Vector3Int _goal, Stack<Vector3Int> _path = null)
     {
-        foreach (AstarNode node in _openList)
+        if (m_previousGoal == _goal)
         {
-            ColorTile(node.m_position, m_openColor);
-        }
-
-        foreach (AstarNode node in _closedList)
-        {
-            ColorTile(node.m_position, m_closedColor);
-        }
-
-        if (_path != null)
-        {
-            foreach(Vector3Int pos in _path)
+            foreach (AstarNode node in _openList)
             {
-                if (pos != _start && pos != _goal)
+                ColorTile(node.m_position, m_openColor);
+            }
+
+            foreach (AstarNode node in _closedList)
+            {
+                ColorTile(node.m_position, m_closedColor);
+            }
+
+            if (_path != null)
+            {
+                foreach (Vector3Int pos in _path)
                 {
-                    ColorTile(pos, m_pathColor);
+                    if (pos != _start && pos != _goal)
+                    {
+                        ColorTile(pos, m_pathColor);
+                    }
                 }
             }
-        }
 
-        ColorTile(_start, m_startColor);
-        ColorTile(_goal, m_goalColor);
+            ColorTile(_start, m_startColor);
+            ColorTile(_goal, m_goalColor);
+        }
+        else
+        {
+            m_previousGoal = _goal;
+            Reset();
+        }
     }
 
     public void ColorTile(Vector3Int _position, Color _color)
